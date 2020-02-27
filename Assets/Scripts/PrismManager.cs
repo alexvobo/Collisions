@@ -13,10 +13,12 @@ public class PrismManager : MonoBehaviour
     public GameObject regularPrismPrefab;
     public GameObject irregularPrismPrefab;
 
-    private List<Prism> prisms = new List<Prism>();
+    private KdTree<Prism> prisms = new KdTree<Prism>(true);
+    private KdTree<Prism> filtered = new KdTree<Prism>(true);
     private List<GameObject> prismObjects = new List<GameObject>();
     private GameObject prismParent;
-    private Dictionary<Prism,bool> prismColliding = new Dictionary<Prism, bool>();
+    private Dictionary<Prism, bool> prismColliding = new Dictionary<Prism, bool>();
+
 
     private const float UPDATE_RATE = 0.5f;
 
@@ -55,17 +57,20 @@ public class PrismManager : MonoBehaviour
             prisms.Add(prismScript);
             prismObjects.Add(prism);
             prismColliding.Add(prismScript, false);
+
+            filtered = prisms;
         }
 
         StartCoroutine(Run());
     }
-    
+
     void Update()
     {
         #region Visualization
 
         DrawPrismRegion();
         DrawPrismWireFrames();
+
 
 #if UNITY_EDITOR
         if (Application.isFocused)
@@ -88,6 +93,7 @@ public class PrismManager : MonoBehaviour
 
             foreach (var collision in PotentialCollisions())
             {
+
                 if (CheckCollision(collision))
                 {
                     prismColliding[collision.a] = true;
@@ -107,27 +113,75 @@ public class PrismManager : MonoBehaviour
 
     private IEnumerable<PrismCollision> PotentialCollisions()
     {
+        prisms.UpdatePositions();
+        //filtered.UpdatePositions();
+        for (int i = 0; i < prisms.Count - 1; i++)
+        {
+
+            filtered.RemoveAt(i);
+            var nearestObj = filtered.FindClosest(prisms[i].prismObject.transform.position);
+            var dist = Vector3.Distance(prisms[i].prismObject.transform.position, nearestObj.transform.position);
+            Debug.Log(prismObjects[i].name + " " + nearestObj.name + " DIST: " + dist);
+            if (dist <= 1)
+            {
+
+                var checkPrisms = new PrismCollision
+                {
+                    a = prisms[i],
+                    b = nearestObj
+                };
+
+                yield return checkPrisms;
+            }
+        }
+        yield break;
+
+
+/*
         for (int i = 0; i < prisms.Count; i++)
             for (int j = i + 1; j < prisms.Count; j++)
-                if (Vector3.Distance(prismObjects[i].transform.position, prismObjects[j].transform.position) <= 1)
+            {
+                var dist = Vector3.Distance(prismObjects[i].transform.position, prismObjects[j].transform.position);
+                Debug.Log(prismObjects[i].name + " " + prismObjects[j].name + " DIST: " + dist);
+
+                if (dist <= 1)
                 {
-                    var checkPrisms = new PrismCollision();
-                    checkPrisms.a = prisms[i];
-                    checkPrisms.b = prisms[j];
+
+                    var checkPrisms = new PrismCollision
+                    {
+                        a = prisms[i],
+                        b = prisms[j]
+                    };
 
                     yield return checkPrisms;
                 }
+            }
 
-        yield break;
+        yield break;*/
+
     }
 
     private bool CheckCollision(PrismCollision collision)
     {
+        /*function GJK_intersection(shape p, shape q, vector initial_axis):
+            vector A := Support(p, initial_axis) − Support(q, −initial_axis)
+            simplex s := { A}
+             vector D := −A
+
+           loop:
+            A:= Support(p, D) − Support(q, −D)
+            if dot(A, D) < 0:
+                reject
+            s := s ∪ A
+            s, D, contains_origin := NearestSimplex(s)
+            if contains_origin:
+                accept*/
+
         var prismA = collision.a;
         var prismB = collision.b;
         var centroidA = prismA.points.Aggregate(Vector3.zero, (a, b) => a + b) / prismA.pointCount;
         var centroidB = prismB.points.Aggregate(Vector3.zero, (a, b) => a + b) / prismB.pointCount;
-        
+
         collision.penetrationDepthVectorAB = new Vector3((Random.value - 0.5f) * 2, 0, (Random.value - 0.5f) * 2);
 
         return true;
@@ -136,7 +190,7 @@ public class PrismManager : MonoBehaviour
     #endregion
 
     #region Private Functions
-    
+
     private void ResolveCollision(PrismCollision collision)
     {
         var prismObjA = collision.a.prismObject;
@@ -158,7 +212,7 @@ public class PrismManager : MonoBehaviour
     private void DrawPrismRegion()
     {
         var points = new Vector3[] { new Vector3(1, 0, 1), new Vector3(1, 0, -1), new Vector3(-1, 0, -1), new Vector3(-1, 0, 1) }.Select(p => p * prismRegionRadiusXZ).ToArray();
-        
+
         var yMin = -prismRegionRadiusY;
         var yMax = prismRegionRadiusY;
 
