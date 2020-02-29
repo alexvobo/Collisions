@@ -13,12 +13,10 @@ public class PrismManager : MonoBehaviour
     public GameObject regularPrismPrefab;
     public GameObject irregularPrismPrefab;
 
-    private KdTree<Prism> prisms = new KdTree<Prism>(true);
-    private KdTree<Prism> filtered = new KdTree<Prism>(true);
+    private KdTree<Prism> prisms = new KdTree<Prism>();
     private List<GameObject> prismObjects = new List<GameObject>();
     private GameObject prismParent;
     private Dictionary<Prism, bool> prismColliding = new Dictionary<Prism, bool>();
-
 
     private const float UPDATE_RATE = 0.5f;
 
@@ -26,7 +24,7 @@ public class PrismManager : MonoBehaviour
 
     void Start()
     {
-        Random.InitState(0);
+        Random.InitState(0);    //10 for no collision
 
         prismParent = GameObject.Find("Prisms");
         for (int i = 0; i < prismCount; i++)
@@ -57,8 +55,6 @@ public class PrismManager : MonoBehaviour
             prisms.Add(prismScript);
             prismObjects.Add(prism);
             prismColliding.Add(prismScript, false);
-
-            filtered = prisms;
         }
 
         StartCoroutine(Run());
@@ -66,11 +62,11 @@ public class PrismManager : MonoBehaviour
 
     void Update()
     {
+        prisms.UpdatePositions();
         #region Visualization
 
         DrawPrismRegion();
         DrawPrismWireFrames();
-
 
 #if UNITY_EDITOR
         if (Application.isFocused)
@@ -84,6 +80,8 @@ public class PrismManager : MonoBehaviour
 
     IEnumerator Run()
     {
+        yield return null;
+
         while (true)
         {
             foreach (var prism in prisms)
@@ -93,7 +91,6 @@ public class PrismManager : MonoBehaviour
 
             foreach (var collision in PotentialCollisions())
             {
-
                 if (CheckCollision(collision))
                 {
                     prismColliding[collision.a] = true;
@@ -113,76 +110,36 @@ public class PrismManager : MonoBehaviour
 
     private IEnumerable<PrismCollision> PotentialCollisions()
     {
-        prisms.UpdatePositions();
-        //filtered.UpdatePositions();
-        for (int i = 0; i < prisms.Count - 1; i++)
+        foreach (var p in prisms)
         {
+            var nearestNeighbor = prisms.FindClosest(p.prismObject.transform.position);
 
-            filtered.RemoveAt(i);
-            var nearestObj = filtered.FindClosest(prisms[i].prismObject.transform.position);
-            var dist = Vector3.Distance(prisms[i].prismObject.transform.position, nearestObj.transform.position);
-            Debug.Log(prismObjects[i].name + " " + nearestObj.name + " DIST: " + dist);
-            if (dist <= 1)
-            {
+            var checkPrisms = new PrismCollision();
+            checkPrisms.a = p;
+            checkPrisms.b = nearestNeighbor;
 
-                var checkPrisms = new PrismCollision
-                {
-                    a = prisms[i],
-                    b = nearestObj
-                };
-
-                yield return checkPrisms;
-            }
+            yield return checkPrisms;
         }
+        /*   for (int i = 0; i < prisms.Count; i++) {
+               for (int j = i + 1; j < prisms.Count; j++) {
+                   var checkPrisms = new PrismCollision();
+                   checkPrisms.a = prisms[i];
+                   checkPrisms.b = prisms[j];
+
+                   yield return checkPrisms;
+               }
+           }*/
+
         yield break;
-
-
-/*
-        for (int i = 0; i < prisms.Count; i++)
-            for (int j = i + 1; j < prisms.Count; j++)
-            {
-                var dist = Vector3.Distance(prismObjects[i].transform.position, prismObjects[j].transform.position);
-                Debug.Log(prismObjects[i].name + " " + prismObjects[j].name + " DIST: " + dist);
-
-                if (dist <= 1)
-                {
-
-                    var checkPrisms = new PrismCollision
-                    {
-                        a = prisms[i],
-                        b = prisms[j]
-                    };
-
-                    yield return checkPrisms;
-                }
-            }
-
-        yield break;*/
-
     }
 
     private bool CheckCollision(PrismCollision collision)
     {
-        /*function GJK_intersection(shape p, shape q, vector initial_axis):
-            vector A := Support(p, initial_axis) − Support(q, −initial_axis)
-            simplex s := { A}
-             vector D := −A
-
-           loop:
-            A:= Support(p, D) − Support(q, −D)
-            if dot(A, D) < 0:
-                reject
-            s := s ∪ A
-            s, D, contains_origin := NearestSimplex(s)
-            if contains_origin:
-                accept*/
-
         var prismA = collision.a;
         var prismB = collision.b;
-        var centroidA = prismA.points.Aggregate(Vector3.zero, (a, b) => a + b) / prismA.pointCount;
-        var centroidB = prismB.points.Aggregate(Vector3.zero, (a, b) => a + b) / prismB.pointCount;
 
-        collision.penetrationDepthVectorAB = new Vector3((Random.value - 0.5f) * 2, 0, (Random.value - 0.5f) * 2);
+
+        collision.penetrationDepthVectorAB = Vector3.zero;
 
         return true;
     }
@@ -239,19 +196,18 @@ public class PrismManager : MonoBehaviour
 
             var yMin = prism.midY - prism.height / 2 * prismTransform.localScale.y;
             var yMax = prism.midY + prism.height / 2 * prismTransform.localScale.y;
-            var prismPoints = prism.points.Select(p => prismTransform.position + Quaternion.AngleAxis(prismTransform.eulerAngles.y, Vector3.up) * new Vector3(p.x * prismTransform.localScale.x, 0, p.z * prismTransform.localScale.z)).ToArray();
 
             var wireFrameColor = prismColliding[prisms[prismIndex]] ? Color.red : Color.green;
 
-            foreach (var point in prismPoints)
+            foreach (var point in prism.points)
             {
                 Debug.DrawLine(point + Vector3.up * yMin, point + Vector3.up * yMax, wireFrameColor);
             }
 
-            for (int i = 0; i < prismPoints.Length; i++)
+            for (int i = 0; i < prism.pointCount; i++)
             {
-                Debug.DrawLine(prismPoints[i] + Vector3.up * yMin, prismPoints[(i + 1) % prismPoints.Length] + Vector3.up * yMin, wireFrameColor);
-                Debug.DrawLine(prismPoints[i] + Vector3.up * yMax, prismPoints[(i + 1) % prismPoints.Length] + Vector3.up * yMax, wireFrameColor);
+                Debug.DrawLine(prism.points[i] + Vector3.up * yMin, prism.points[(i + 1) % prism.pointCount] + Vector3.up * yMin, wireFrameColor);
+                Debug.DrawLine(prism.points[i] + Vector3.up * yMax, prism.points[(i + 1) % prism.pointCount] + Vector3.up * yMax, wireFrameColor);
             }
         }
     }
@@ -265,6 +221,18 @@ public class PrismManager : MonoBehaviour
         public Prism a;
         public Prism b;
         public Vector3 penetrationDepthVectorAB;
+    }
+
+    private class Tuple<K, V>
+    {
+        public K Item1;
+        public V Item2;
+
+        public Tuple(K k, V v)
+        {
+            Item1 = k;
+            Item2 = v;
+        }
     }
 
     #endregion
