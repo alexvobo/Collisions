@@ -19,6 +19,7 @@ public class PrismManager : MonoBehaviour
     private Dictionary<Prism, bool> prismColliding = new Dictionary<Prism, bool>();
 
     private const float UPDATE_RATE = 0.5f;
+    private Vector3 directionVector;
 
     #region Unity Functions
 
@@ -62,11 +63,12 @@ public class PrismManager : MonoBehaviour
 
     void Update()
     {
-        prisms.UpdatePositions();
+
         #region Visualization
 
         DrawPrismRegion();
         DrawPrismWireFrames();
+        prisms.UpdatePositions();
 
 #if UNITY_EDITOR
         if (Application.isFocused)
@@ -120,28 +122,154 @@ public class PrismManager : MonoBehaviour
 
             yield return checkPrisms;
         }
-        /*   for (int i = 0; i < prisms.Count; i++) {
-               for (int j = i + 1; j < prisms.Count; j++) {
-                   var checkPrisms = new PrismCollision();
-                   checkPrisms.a = prisms[i];
-                   checkPrisms.b = prisms[j];
-
-                   yield return checkPrisms;
-               }
-           }*/
-
         yield break;
     }
+    private Vector3 FarthestPoint(Vector3[] vertices, Vector3 d)
+    {
+        // Return the farthest point in vertices along direction d
 
+        float highest = -float.MaxValue;
+        Vector3 support = Vector3.zero;
+
+        foreach (var v in vertices)
+        {
+            float dot = v.x * d.x + v.y * d.y;
+
+            if (dot > highest)
+            {
+                highest = dot;
+                support = v;
+            }
+        }
+        //Debug.DrawLine(support, -support, Color.white);
+        return support;
+    }
+    private Vector3 GetSupport(Prism A, Prism B, Vector3 d)
+    {
+        //Finds the support vector by subtracting the farthest point in B along -d from the farthest point in A along d, the opposite direction.
+        return FarthestPoint(A.points, d) - FarthestPoint(B.points, -d);
+    }
+    private Vector3 TripleProduct(Vector3 a, Vector3 b, Vector3 c)
+    {
+        return Vector3.Cross(a, (Vector3.Cross(b, c)));
+    }
+    private bool CheckOrigin(List<Vector3> simplex, Vector3 dir)
+    {
+        // Returns true if we have a collision, false if we dont
+        // If we dont, updates the direction vector so that GJK can search for a new point to query.
+
+        // Count of points in simplex.
+        var simplexCount = simplex.Count;
+
+        // A is the last point in our simplex
+        var A = simplex[simplexCount - 1];
+
+        // Negate A
+        var A0 = -A;
+
+        if (simplexCount == 2)
+        {
+            // 2 points is a line
+
+            var B = simplex[simplexCount - 1];
+            // Find AB
+            var AB = B - A;
+            // Find perpendicular of AB
+            var abPerp = TripleProduct(AB, A0, AB);
+            // set the new direction to perpendicular of AB so we can find another point along it and form a 3-Simplex (Triangle)
+            directionVector = abPerp;
+        }
+        else if (simplexCount == 3)
+        {
+            // 3 points is a triangle.
+
+            // Find the rest of the points in the simplex.
+            var B = simplex[1];
+            var C = simplex[0];
+            // Find edges of triangle.
+            var AB = B - A;
+            var AC = C - A;
+            // Find each edge's perpendicular.
+            var abPerp = TripleProduct(AC, AB, AB);
+            var acPerp = TripleProduct(AB, AC, AC);
+            // Check for origin with perp. of AB
+            if (Vector3.Dot(abPerp, A0) > 0)
+            {
+                // remove point c
+                simplex.RemoveAt(0);
+                // set the new direction to perpendicular of AB so we can find a point that works, unlike C
+                directionVector = abPerp;
+                return false;
+            }
+            else
+            {
+                // Check for origin with perp. of AC
+                if (Vector3.Dot(acPerp, A0) > 0)
+                {
+                    // Remove B from the simplex.
+                    simplex.RemoveAt(1);
+                    // Set the new direction to perpendicular of AC so we can find a point that works, unlike B.
+                    directionVector = acPerp;
+                    return false;
+                }
+                else
+                {
+                    // Origin Found
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+    private bool GJK(Prism prismA, Prism prismB, Vector3 dir)
+    {
+        List<Vector3> simplex = new List<Vector3>
+        {
+
+            //First point on the edge of the minkowski difference. 1-Simplex.
+            GetSupport(prismA, prismB, dir)
+        };
+
+        //Compute negative direction of d
+        directionVector = -dir;
+
+        while (true)
+        {
+            //Add the point to the simplex. 2-Simplex.
+            simplex.Add(GetSupport(prismA, prismB, directionVector));
+
+            if (Vector3.Dot(simplex[simplex.Count - 1], directionVector) <= 0)
+            {
+                //point does not pass origin so do not add it.
+                return false;
+            }
+            else
+            {
+                //CheckOrigin automatically updates the directionVector on every call. If it doesnt that means we found the origin.
+                if (CheckOrigin(simplex, directionVector))
+                {
+                    return true;
+                }
+            }
+        }
+    }
     private bool CheckCollision(PrismCollision collision)
     {
         var prismA = collision.a;
         var prismB = collision.b;
 
+        var centerA = prismA.transform.position;
+        var centerB = prismB.transform.position;
 
-        collision.penetrationDepthVectorAB = Vector3.zero;
+        //Subtracts centers of both prisms to find the initial direction of the vector to perform GJK on.
+        Vector3 d = centerB - centerA;
 
-        return true;
+        collision.penetrationDepthVectorAB = d;
+
+        // If true we have a collision, if false we dont.
+        return GJK(prismA, prismB, d) ? true : false;
+    
     }
 
     #endregion
