@@ -63,6 +63,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\Scripts\Edge.cs" />
     <Compile Include="Assets\Scripts\kdTree.cs" />
     <Compile Include="Assets\Scripts\PrismManager.cs" />
     <Compile Include="Assets\Scripts\Prisms\IrregularPrism.cs" />
@@ -70,6 +71,7 @@
     <Compile Include="Assets\Scripts\Prisms\RectPrism.cs" />
     <Compile Include="Assets\Scripts\Prisms\RegularPrism.cs" />
     <Compile Include="Assets\Scripts\Prisms\TriPrism.cs" />
+    <Compile Include="Assets\Scripts\Simplex.cs" />
     <Reference Include="Unity.Timeline.Editor">
       <HintPath>C:/Users/Alex/Documents/UnityProjects/Collisions/Library/ScriptAssemblies/Unity.Timeline.Editor.dll</HintPath>
     </Reference>
