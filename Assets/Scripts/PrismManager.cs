@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -108,26 +108,31 @@ public class PrismManager : MonoBehaviour
 
     #region Incomplete Functions
 
+
     private IEnumerable<PrismCollision> PotentialCollisions()
     {
-        for (int i = 0; i < prisms.Count; i++)
+
+      prisms.UpdatePositions();
+
+        foreach(var prism in prisms)
         {
-            Prism p = prisms[i];
-            var nearestNeighbor = prisms.FindClosest(p.transform.position);
-            Debug.Log(nearestNeighbor == p);
-            if (!nearestNeighbor.Equals(p))
+            var nearestNeighbor = prisms.FindClosest(prism.transform.position);  // Find closest object to given position
+
+          //print(nearestNeighbor.Equals(prism));
+
+            if (!nearestNeighbor.Equals(prism))
             {
                 var checkPrisms = new PrismCollision();
-                checkPrisms.a = p;
+                checkPrisms.a = prism;
                 checkPrisms.b = nearestNeighbor;
 
 
-                Debug.DrawLine(p.transform.position, nearestNeighbor.transform.position, Color.red);
+
+              //  Debug.DrawLine(prism.transform.position, nearestNeighbor.transform.position, Color.red);
                 yield return checkPrisms;
             }
-
-
         }
+
         yield break;
     }
     private Vector3 FarthestPoint(Vector3[] vertices, Vector3 d)
@@ -284,35 +289,50 @@ public class PrismManager : MonoBehaviour
 
         }
     }
+
+    //new CheckCollision does not work for now, objects are not red when collided
+
+    // private bool CheckCollision(PrismCollision collision)
+    // {
+    //
+    //     var prismA = collision.a;
+    //     var prismB = collision.b;
+    //
+    //     var centerA = prismA.transform.position;
+    //     var centerB = prismB.transform.position;
+    //
+    //     //Subtracts centers of both prisms to find the initial direction of the vector to perform GJK on.
+    //     Vector3 d = centerB - centerA;
+    //   //  Debug.Log(d);
+    //
+    //     //collision.penetrationDepthVectorAB = d;
+    //
+    //     // If GJK returns points we have a simplex, otherwise we have an empty list of vectors.
+    //     Simplex GJKVector = GJK(prismA, prismB, d);
+    //     if (GJKVector != null)
+    //     {
+    //         collision.penetrationDepthVectorAB = EPA(GJKVector, prismA, prismB);
+    //         return true;
+    //     }
+    //     else
+    //     {
+    //         return false;
+    //     }
+    //   //   return GJK(prismA, prismB, d) ? true : false;
+    //
+    // }
+
+    // Original method
+
     private bool CheckCollision(PrismCollision collision)
-
     {
-
         var prismA = collision.a;
         var prismB = collision.b;
 
-        var centerA = prismA.transform.position;
-        var centerB = prismB.transform.position;
 
-        //Subtracts centers of both prisms to find the initial direction of the vector to perform GJK on.
-        Vector3 d = centerB - centerA;
-        Debug.Log(d);
+        collision.penetrationDepthVectorAB = Vector3.zero;
 
-        //collision.penetrationDepthVectorAB = d;
-
-        // If GJK returns points we have a simplex, otherwise we have an empty list of vectors.
-        Simplex GJKVector = GJK(prismA, prismB, d);
-        if (GJKVector != null)
-        {
-            collision.penetrationDepthVectorAB = EPA(GJKVector, prismA, prismB);
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-        // return GJK(prismA, prismB, d) ? true : false;
-
+        return true;
     }
 
     #endregion
