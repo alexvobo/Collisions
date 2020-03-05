@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -341,7 +341,7 @@ public class KdTree<T> : IEnumerable<T>, IEnumerable where T : Component
                 traversed.Add(current.component);
 
             var nodeDist = _distance(position, current.component.transform.position);
-            if (nodeDist < nearestDist)
+            if (nodeDist < nearestDist && nodeDist != 0) // nodeDist != 0 makes sure that the object isnt going to consider distance to itself
             {
                 nearestDist = nodeDist;
                 nearest = current;
