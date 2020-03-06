@@ -11,8 +11,7 @@ public class Simplex
 
     public void Remove(Vector3 point)
     {
-        var toRemove = points.Find(p => p.Equals(point));
-        points.Remove(toRemove);
+        points.Remove(points.Find(p => p.Equals(point)));
         pointCount--;
 
     }
@@ -38,10 +37,10 @@ public class Simplex
     }
     public Edge ClosestEdge()
     {
-        Edge closestEdge = new Edge();
-        // prime the distance of the edge to the max
-        closestEdge.distance = float.MaxValue;
-        // s is the passed in simplex
+        Edge closestEdge = new Edge
+        {
+            distance = float.MaxValue
+        };
 
         for (int i = 0; i < this.pointCount; i++)
         {
@@ -51,13 +50,12 @@ public class Simplex
             var A = points[i];
             var B = points[j];
             // create the edge vector
-            var E = B - A; // or a.to(b);
-                           // get the vector from the origin to a
-            var A0 = -A; // or a - ORIGIN
+            var E = B - A; 
+                         
+            var A0 = -A; 
                          // get the vector from the edge towards the origin
-            var n = Vector3.Cross(E, (Vector3.Cross(A0, E)));
-            // normalize the vector
-            n.Normalize();
+            var n = (A0 * Vector3.Dot(E, E) - E * (Vector3.Dot(A0, E))).normalized;
+ 
             // calculate the distance from the origin to the edge
             float d = Vector3.Dot(n, A); // could use b or a here
                                          // check the distance against the other distances
