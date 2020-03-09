@@ -5,6 +5,7 @@ using UnityEngine;
 public class Edge
 {
     public float distance;
-    public Vector3 normal;
+    public Vector3 direction;
     public int index;
+
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Simplex
 {
-    public int pointCount = 0;
+    public int numPoints = 0;
     public List<Vector3> points = new List<Vector3>();
     public Vector3 d;
 
@@ -12,28 +12,24 @@ public class Simplex
     public void Remove(Vector3 point)
     {
         points.Remove(points.Find(p => p.Equals(point)));
-        pointCount--;
+        numPoints--;
 
     }
     public void Add(Vector3 point)
     {
         points.Add(point);
-        pointCount++;
+        numPoints++;
 
     }
-    public void Add(Vector3 point, int insertion)
+    public void Add(Vector3 point, int index)
     {
-        points.Insert(insertion, point);
-        pointCount++;
+        points.Insert(index, point);
+        numPoints++;
 
     }
     public Vector3 GetLast()
     {
-        return points[pointCount - 1];
-    }
-    public void setDirection(Vector3 dir)
-    {
-        this.d = dir;
+        return points[numPoints - 1];
     }
     public Edge ClosestEdge()
     {
@@ -42,32 +38,42 @@ public class Simplex
             distance = float.MaxValue
         };
 
-        for (int i = 0; i < this.pointCount; i++)
+        for (int i = 0; i < this.numPoints; i++)
         {
-            // compute the next points index
-            int j = i + 1 == this.pointCount ? 0 : i + 1;
-            // get the current point and the next one
-            var A = points[i];
-            var B = points[j];
-            // create the edge vector
-            var E = B - A; 
-                         
-            var A0 = -A; 
-                         // get the vector from the edge towards the origin
-            var n = (A0 * Vector3.Dot(E, E) - E * (Vector3.Dot(A0, E))).normalized;
- 
-            // calculate the distance from the origin to the edge
-            float d = Vector3.Dot(n, A); // could use b or a here
-                                         // check the distance against the other distances
+            int nextPoint = 0;
+
+            if (numPoints != (i + 1))
+            {
+                nextPoint = i + 1;
+            }
+
+            // Get two points for creating the edge
+
+            Vector3 A = points[i];
+            Vector3 B = points[nextPoint];
+
+            // Form the edge
+            Vector3 edge = B - A;
+
+            // Vector that passes through the origin
+            Vector3 A0 = -A;
+
+            // Edge through origin
+            //Vector3 E0 = (A0 * Vector3.Dot(edge, edge) - edge * (Vector3.Dot(A0, edge))).normalized;
+            Vector3 E0 = new Vector3(edge.z, 0.0f, -edge.x);
+
+            // Edge through origin distance
+            float d = Vector3.Dot(E0, A);
+
+            // Update closestEdge if new distance is shorter than the edge we already found
             if (d < closestEdge.distance)
             {
-                // if this edge is closer then use it
                 closestEdge.distance = d;
-                closestEdge.normal = n;
-                closestEdge.index = j;
+                closestEdge.direction = E0;
+                closestEdge.index = nextPoint;
             }
         }
-        // return the closest edge we found
+
         return closestEdge;
 
     }
