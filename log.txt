@@ -1,0 +1,13 @@
+6298556 was Alexsandr Vobornov, 2 minutes ago, message: Added report
+29247d8 was Alexsandr Vobornov, 58 minutes ago, message: Updated GJK logic
+a517ad8 was Alexsandr Vobornov, 4 hours ago, message: Updates to collisionDepthVector calculation in EPA. Tweaks to GJK and PotentialCollisions(). Updated comments
+1c7b774 was Feodor Dolgov, 7 hours ago, message: Updated PrismManager with TA changes
+d19085c was Alexsandr Vobornov, 3 days ago, message: Fixed bug when calculating tripleproduct. Minor logic adjustments in EPA/GJK and code cleanup.
+e8aea8c was Feodor Dolgov, 3 days ago, message: Updated PrismManager
+0e21cdb was Feodor Dolgov, 3 days ago, message: Updated kd tree
+1801d33 was Alexsandr Vobornov, 8 days ago, message: Added Edge and Simplex classes to simplify code. Added EPA algorithm. Modified potential collision approach, finding nearestneighbor still returns the same point, need to fix that before debugging anything else.
+1a70063 was Alexsandr Vobornov, 9 days ago, message: Added FarthestPoint(), GetSupport(), TripleProduct(),  CheckOrigin(), and GJK() functions. CheckCollision() not done, still need to add EPA algorithm to compute the penetration depth from the first shape to the second shape. Also wrote out documentation for functions.
+6f6ba1b was Alexsandr Vobornov, 9 days ago, message: Added updated b1-master code. Completed PotentialCollisions() function. Modified PrismManager parameters: 50, 5, 0, 3, 0. (as per assign. 6b)
+16d52c6 was Alexsandr Vobornov, 11 days ago, message: Added k-d tree algorithm
+2859ed5 was Alexsandr Vobornov, 13 days ago, message: Added b1-master files
+7b39040 was vobos2, 13 days ago, message: Create .gitignore
