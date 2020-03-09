@@ -365,13 +365,13 @@ MonoBehaviour:
       speed: 2
       m_Value: 0
   m_Rotation:
-    m_Target: {x: -0.15142699, y: 0.61641353, z: -0.7630433, w: -0.12231995}
+    m_Target: {x: -0.37454045, y: 0.42313695, z: 0.19786064, w: 0.80097395}
     speed: 2
-    m_Value: {x: -0.15141995, y: 0.61638486, z: -0.7630078, w: -0.12231427}
+    m_Value: {x: -0.37423697, y: 0.42433083, z: 0.19841893, w: 0.800325}
   m_Size:
-    m_Target: 22
+    m_Target: 18.457195
     speed: 2
-    m_Value: 22
+    m_Value: 17.662388
   m_Ortho:
     m_Target: 1
     speed: 2
@@ -425,9 +425,9 @@ MonoBehaviour:
   m_SceneHierarchy:
     m_TreeViewState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: 6a2c0000
-      m_LastClickedID: 11370
-      m_ExpandedIDs: 84fbffff702c0000
+      m_SelectedIDs: 
+      m_LastClickedID: 0
+      m_ExpandedIDs: 7cfbffff
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -896,8 +896,8 @@ MonoBehaviour:
     m_Tooltip: 
   m_Pos:
     serializedVersion: 2
-    x: 301.6
-    y: 80.8
+    x: 0
+    y: 0
     width: 727
     height: 448
   m_ViewDataDictionary: {fileID: 0}

@@ -19,7 +19,6 @@ public class PrismManager : MonoBehaviour
     private Dictionary<Prism, bool> prismColliding = new Dictionary<Prism, bool>();
 
     private const float UPDATE_RATE = 0.5f;
-    private Vector3 directionVector;
 
     #region Unity Functions
 
@@ -119,14 +118,17 @@ public class PrismManager : MonoBehaviour
         {
             Debug.Log("Checking prism #" + prism.name);
             var nearestNeighbor = prisms.FindClosest(prism.transform.position);  // Find closest object to given position
-
-            var checkPrisms = new PrismCollision
+            if (nearestNeighbor != prism)
             {
-                a = prism,
-                b = nearestNeighbor
-            };
+                var checkPrisms = new PrismCollision
+                {
+                    a = prism,
+                    b = nearestNeighbor
+                };
 
-            yield return checkPrisms;
+
+                yield return checkPrisms;
+            }
 
         }
 
@@ -168,16 +170,16 @@ public class PrismManager : MonoBehaviour
 
         // Get first point in simplex
 
-        var A = s.points[0];
+        var A = s.GetLast();
 
         // Negate A
         var A0 = -A;
 
-        if (simplexCount != 3)
+        if (simplexCount == 2)
         {
             // 2 points is a line
 
-            var B = s.GetLast();
+            var B = s.points[0];
 
             // Find AB
             var AB = B - A;
@@ -187,44 +189,56 @@ public class PrismManager : MonoBehaviour
             var abPerp = TripleProduct(AB, A0, AB);
 
             // set the new direction to perpendicular of AB so we can find another point along it and form a 3-Simplex (Triangle)
-            directionVector = abPerp;
+            s.direction = abPerp;
+            if (s.direction.sqrMagnitude <= Mathf.Pow(10, 6))
+            {
+                s.direction = new Vector3(AB.z, 0.0f, -AB.x);
+            }
+
+
         }
-        else
+        else if (simplexCount == 3)
         {
             // 3 points is a triangle.
 
             // Find the rest of the points in the simplex.
             var B = s.points[1];
-            var C = s.GetLast();
+            var C = s.points[0];
 
             // Find edges of triangle.
             var AB = B - A;
             var AC = C - A;
 
             // Find each edge's perpendicular.
-            var abPerp = TripleProduct(AC, AB, AB);
-            var acPerp = TripleProduct(AB, AC, AC);
-
+            /*  var abPerp = TripleProduct(AC, AB, AB);
+              var acPerp = TripleProduct(AB, AC, AC);
+  */
+            Vector3 acPerp = new Vector3();
+            float dot = AB.x * AC.z - AC.x * AB.z;
+            acPerp.x = -AC.z * dot;
+            acPerp.z = AC.x * dot;
 
             // Check for origin with perp. of AB
-            if (Vector3.Dot(abPerp, A0) > 0)
+            if (Vector3.Dot(acPerp, A0) >= 0f)
             {
-                Debug.Log("removing C" + C);
-                s.Remove(C);
+                Debug.Log("removing B" + B);
+                s.Remove(B);
                 // Set the new direction to perpendicular of AB so we can find a point that works, unlike C
-                directionVector = abPerp;
+                s.direction = acPerp;
             }
             else
             {
-
+                Vector3 abPerp = new Vector3();
+                abPerp.x = AB.z * dot;
+                abPerp.z = -AB.x * dot;
                 // Check for origin with perp. of AC
-                if (Vector3.Dot(acPerp, A0) > 0)
+                if (Vector3.Dot(abPerp, A0) >= 0f)
                 {
-                    Debug.Log("removing B" + B);
+                    Debug.Log("removing C" + C);
 
-                    s.Remove(B);
+                    s.Remove(C);
                     // Set the new direction to perpendicular of AC so we can find a point that works, unlike B.
-                    directionVector = acPerp;
+                    s.direction = abPerp;
                 }
                 else
                 {
@@ -234,56 +248,58 @@ public class PrismManager : MonoBehaviour
             }
         }
         return false;
+
     }
     private Simplex GJK(Prism prismA, Prism prismB, Vector3 dir)
     {
-        Simplex s = new Simplex();
-
+        Simplex s = new Simplex
+        {
+            direction = dir
+        };
         //First point on the edge of the minkowski difference. 1-Simplex.
         s.Add(GetSupport(prismA, prismB, dir));
         //s.points.ForEach(x => print(x));
         //Point in opposite direction
-        directionVector = -dir;
+        s.direction = -s.direction;
 
         while (true)
         {
             //Add the point to the simplex. 2-Simplex.
-            s.Add(GetSupport(prismA, prismB, directionVector));
+            s.Add(GetSupport(prismA, prismB, s.direction));
 
-            if (Vector3.Dot(s.GetLast(), directionVector) <= 0)
+            if (Vector3.Dot(s.GetLast(), s.direction) <= 0)
             {
                 //point does not pass origin so do not add it.
                 return null;
             }
             else
             {
-                //CheckOrigin automatically updates the directionVector on every call. If it doesnt that means we found the origin.
-                //s.points.ForEach(x => Debug.Log("point" + x));
+                //CheckOrigin automatically updates the direction parameter on every call. If it doesnt that means we found the origin.
 
                 if (CheckOrigin(s))
                 {
 
                     print("found origin");
-                    s.points.ForEach(x => Debug.Log("origin" + x));
                     return s;
                 }
 
                 Debug.Log(prismA.name + " " + prismB.name);
-                // s.points.ForEach(x => Debug.Log("pointafter" + x));
             }
         }
     }
     private Vector3 EPA(Simplex s, Prism A, Prism B)
     {
+
         while (true)
         {
-            Edge e = s.ClosestEdge();
+            var e = s.ClosestEdge();
 
             var point = GetSupport(A, B, e.direction);
 
-            float d = Vector3.Dot(point, e.direction);
-            if (d - e.distance < Mathf.Pow(10, 5))
+            var d = Vector3.Dot(point, e.direction);
+            if (d - e.distance < Mathf.Pow(10, 6))
             {
+                Debug.Log(s.numPoints);
                 var normal = e.direction;
                 var depth = d;
                 print("in epa");
@@ -291,17 +307,13 @@ public class PrismManager : MonoBehaviour
             }
             else
             {
-                // we haven't reached the edge of the Minkowski Difference
-                // so continue expanding by adding the new point to the simplex
-                // in between the points that made the closest edge
+                // Insert point between points in closestEdge.
                 Debug.Log("in epa adding point" + point + " " + e.index);
                 s.Add(point, e.index);
             }
 
         }
     }
-
-    //new CheckCollision does not work for now, objects are not red when collided
 
     private bool CheckCollision(PrismCollision collision)
     {
@@ -320,6 +332,7 @@ public class PrismManager : MonoBehaviour
 
         if (GJKVector != null)
         {
+
             print("GJK Not null, starting EPA " + prismA.name + " " + prismB.name);
             collision.penetrationDepthVectorAB = EPA(GJKVector, prismA, prismB);
             return true;
